@@ -1,0 +1,38 @@
+version: '3.8'
+services:
+  db:
+    image: mcr.microsoft.com/mssql/server
+    environment:
+      ACCEPT_EULA: "Y"
+      SA_PASSWORD: "Your_strong_1234_password"
+    volumes:
+      - db_data:/var/opt/mssql
+    networks:
+      - backend
+
+  api:
+    build: ./api
+    volumes:
+      - ./api:/app
+    environment:
+      - ASPNETCORE_URLS=http://+:80
+      - ConnectionStrings__DefaultConnection=Server=db;Database=master;User=sa;Password=Your_strong_1234_password;
+    depends_on:
+      - db
+    networks:
+      - backend
+
+  web:
+    image: httpd:2.4
+    volumes:
+      - ./www:/usr/local/apache2/htdocs/
+    depends_on:
+      - api
+    networks:
+      - backend
+
+volumes:
+  db_data:
+
+networks:
+  backend:
