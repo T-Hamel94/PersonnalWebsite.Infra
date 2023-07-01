@@ -1,38 +1,47 @@
-version: '3.8'
+version: '3'
+
 services:
-  db:
-    image: mcr.microsoft.com/mssql/server
+  website:
+    container_name: Nginx
+    image: nginx:latest
+    volumes:
+      - ./Nginx/html:/usr/share/nginx/html
+      - ./Nginx/default.conf:/etc/nginx/conf.d/default.conf
+    ports:
+      - '80:80'
+    networks:
+      - backend
+
+  rest-api:
+    container_name: REST-API
+    hostname: personnalwebsite.api
+    build: ./API
+    volumes:                     
+      - ./API/app:/app         
+    ports:
+      - '5000:80'
+    networks:
+      - backend
+
+  sql-server:
+    container_name: SqlServer-2022
+    hostname: SQLServer2022
+    image: mcr.microsoft.com/mssql/server:2022-latest
     environment:
-      ACCEPT_EULA: "Y"
-      SA_PASSWORD: "Your_strong_1234_password"
+      ACCEPT_EULA: 'Y'
+      MSSQL_SA_PASSWORD: 'YourStrong@Passw0rd' 
+    ports:
+      - '1433:1433'
     volumes:
-      - db_data:/var/opt/mssql
+      - ./DB:/var/opt/mssql/data
+    user: '${UID}:${GID}'
     networks:
       - backend
-
-  api:
-    build: ./api
-    volumes:
-      - ./api:/app
-    environment:
-      - ASPNETCORE_URLS=http://+:80
-      - ConnectionStrings__DefaultConnection=Server=db;Database=master;User=sa;Password=Your_strong_1234_password;
-    depends_on:
-      - db
-    networks:
-      - backend
-
-  web:
-    image: httpd:2.4
-    volumes:
-      - ./www:/usr/local/apache2/htdocs/
-    depends_on:
-      - api
-    networks:
-      - backend
-
-volumes:
-  db_data:
+    entrypoint:
+      - /bin/bash
+      - -c
+    command: >
+      "/opt/mssql-tools/bin/sqlcmd -S localhost -U SA -P 'YourStrong@Passw0rd' -d master -i /var/opt/mssql/data/init.sql & /opt/mssql/bin/sqlservr"
 
 networks:
-  backend:
+  backend: 
